@@ -1,11 +1,18 @@
 import requests
+from twilio.rest import Client
 import os
 
 STOCK = "TSLA"
 COMPANY_NAME = "Tesla"
 STOCK_API_KEY = os.environ.get("STOCK_API_KEY")  # Uses API from https://www.alphavantage.co to get stock information
 NEWS_API_KEY = os.environ.get("NEWS_API_KEY")  # Uses API from https://newsapi.org to get stock news
+FROM_PHONE_NO = os.environ.get("FROM_PHONE_NO")  # The next 4 use Twilio API to send SMS
+TO_PHONE_NO = os.environ.get("TO_PHONE_NO")
+ACCOUNT_SID = os.environ.get("ACCOUNT_SID")
+AUTH_TOKEN = os.environ.get("AUTH_TOKEN")
 PERCENT_CHANGE = 5
+NUM_NEWS = 3  # Change this to the number of headlines you want per company
+
 
 stock_parameters = {
     "function": "TIME_SERIES_DAILY",
@@ -34,5 +41,11 @@ if abs(stock_change_percent) >= PERCENT_CHANGE:
     news_response = requests.get("https://newsapi.org/v2/top-headlines", params=news_parameters)
     news_response.raise_for_status()
     news_data = news_response.json()["articles"]
+    for j in range(NUM_NEWS):
+        headline = news_data[j]["title"]
+        brief = " ".join(news_data[j]["content"].split()[:-2])
 
-    print(news_data)
+        content = f"{STOCK}: {arrow}{rounded_change}\nHeadline: {headline}\nBrief: {brief}"
+        client = Client(ACCOUNT_SID, AUTH_TOKEN)
+        message = client.messages.create(body=content, from_=FROM_PHONE_NO, to=TO_PHONE_NO)
+        print(message.status)
